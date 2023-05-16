@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Screen and Audio Recorder",
+  "description": "A Chrome extension that allows users to record their screen and audio.",
+  "version": "1.0",
+  "permissions": ["tabs", "downloads", "activeTab"],
+  "action": {
+    "default_title": "Start Recording"
+  },
+  "background": {
+    "matches": ["http://*/*", "https://*/*"],
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["popup.js"]
+    }
+  ],
+  "icons": {
+    "48": "icon.png"
+  }
+}
