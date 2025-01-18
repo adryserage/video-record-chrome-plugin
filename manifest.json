@@ -1,23 +1,51 @@
 {
   "manifest_version": 3,
-  "name": "Screen and Audio Recorder",
-  "description": "A Chrome extension that allows users to record their screen and audio.",
-  "version": "1.0",
-  "permissions": ["tabs", "downloads", "activeTab"],
+  "name": "Screen and Audio Recorder Pro",
+  "description": "Professional screen and audio recording with 4K support, offline capability, and advanced features.",
+  "version": "2.0.0",
+  "permissions": [
+    "tabs",
+    "downloads",
+    "storage",
+    "desktopCapture",
+    "audioCapture"
+  ],
   "action": {
-    "default_title": "Start Recording"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   },
   "background": {
-    "matches": ["http://*/*", "https://*/*"],
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
-  "content_scripts": [
-    {
-      "matches": ["http://*/*", "https://*/*"],
-      "js": ["popup.js"]
+  "commands": {
+    "start-stop-recording": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+R"
+      },
+      "description": "Start/Stop Recording"
+    },
+    "pause-resume-recording": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+P"
+      },
+      "description": "Pause/Resume Recording"
     }
-  ],
-  "icons": {
-    "48": "icon.png"
-  }
+  },
+  "web_accessible_resources": [{
+    "resources": ["icons/*"],
+    "matches": ["<all_urls>"]
+  }],
+  "minimum_chrome_version": "88"
 }
