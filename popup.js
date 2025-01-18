@@ -1,94 +1,156 @@
-document.addEventListener("DOMContentLoaded", (event) => {
-  let recorder;
-  let data = [];
-  let startButton = document.getElementById("startButton");
-  let stopButton = document.getElementById("stopButton");
-  let timerElement = document.getElementById("timer");
-  let qualitySelector = document.getElementById("qualitySelector");
-  let startTime;
+// UI Elements
+const startButton = document.getElementById('startButton');
+const stopButton = document.getElementById('stopButton');
+const pauseButton = document.getElementById('pauseButton');
+const timerElement = document.getElementById('timer');
+const statusElement = document.getElementById('status');
+const qualitySelector = document.getElementById('qualitySelector');
+const audioToggle = document.getElementById('audioToggle');
 
-  startButton.addEventListener("click", function () {
-    navigator.mediaDevices
-      .getDisplayMedia({
-        video: {
-          width: { ideal: qualitySelector.value === "4k" ? 3840 : 1920 },
-          height: { ideal: qualitySelector.value === "4k" ? 2160 : 1080 },
-        },
-      })
-      .then((stream) => {
-        startButton.disabled = true;
-        stopButton.disabled = false;
-        recorder = new MediaRecorder(stream);
-        recorder.ondataavailable = (e) => {
-          data.push(e.data);
-          if (recorder.state == "inactive") {
-            let blob = new Blob(data, { type: "video/webm" });
-            let url = URL.createObjectURL(blob);
-            let a = document.createElement("a");
-            a.style.display = "none";
-            a.href = url;
-            a.download = "videorecord.webm";
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-              document.body.removeChild(a);
-              window.URL.revokeObjectURL(url);
-            }, 100);
-          }
-        };
-        recorder.start();
-        startTime = Date.now();
-        updateTimer();
-      })
-      .catch((err) => {
-        if (err.name === "NotAllowedError") {
-          console.log("Permission to access screen was denied by the user.");
-        } else {
-          console.log("An error occurred: " + err);
-        }
-      });
-  });
+// State
+let isRecording = false;
+let isPaused = false;
+let updateInterval = null;
 
-  stopButton.addEventListener("click", function () {
-    if (recorder) {
-      recorder.onstop = () => {
-        let blob = new Blob(data, { type: "video/webm" });
-        let url = URL.createObjectURL(blob);
-        let a = document.createElement("a");
-        a.style.display = "none";
-        a.href = url;
-        a.download = "videorecord.webm";
-        document.body.appendChild(a);
-        a.addEventListener("download", function () {
-          // Reset the recorder and the data array
-          recorder = null;
-          data = [];
-          startButton.disabled = false;
-          stopButton.disabled = true;
-        });
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(url);
-        }, 100);
-      };
-      recorder.stop();
+// Initialize popup
+document.addEventListener('DOMContentLoaded', async () => {
+  // Load saved settings
+  const { settings } = await chrome.storage.local.get('settings');
+  qualitySelector.value = settings.quality;
+  audioToggle.checked = settings.audioEnabled;
+
+  // Get current recording status
+  updateRecordingStatus();
+
+  // Add event listeners
+  startButton.addEventListener('click', startRecording);
+  stopButton.addEventListener('click', stopRecording);
+  pauseButton.addEventListener('click', togglePause);
+  qualitySelector.addEventListener('change', updateSettings);
+  audioToggle.addEventListener('change', updateSettings);
+
+  // Listen for status updates from background
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.action === 'STATUS_UPDATE') {
+      updateUI(message.status);
     }
   });
-
-  function updateTimer() {
-    let now = Date.now();
-    let difference = now - startTime;
-    let seconds = Math.floor(difference / 1000);
-    let minutes = Math.floor(seconds / 60);
-    let hours = Math.floor(minutes / 60);
-    seconds = seconds % 60;
-    minutes = minutes % 60;
-    timerElement.textContent = `${hours.toString().padStart(2, "0")}:${minutes
-      .toString()
-      .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-    if (recorder && recorder.state == "recording") {
-      setTimeout(updateTimer, 1000);
-    }
-  }
 });
+
+// Recording controls
+async function startRecording() {
+  try {
+    await chrome.runtime.sendMessage({
+      action: 'START_RECORDING',
+      options: {
+        quality: qualitySelector.value,
+        audioEnabled: audioToggle.checked
+      }
+    });
+    
+    updateButtonStates(true, false);
+    updateStatus('Recording started');
+  } catch (error) {
+    console.error('Failed to start recording:', error);
+    updateStatus('Failed to start recording');
+  }
+}
+
+async function stopRecording() {
+  try {
+    await chrome.runtime.sendMessage({ action: 'STOP_RECORDING' });
+    updateButtonStates(false, true);
+    updateStatus('Recording saved');
+  } catch (error) {
+    console.error('Failed to stop recording:', error);
+    updateStatus('Failed to stop recording');
+  }
+}
+
+async function togglePause() {
+  try {
+    await chrome.runtime.sendMessage({ action: 'TOGGLE_PAUSE' });
+    isPaused = !isPaused;
+    updatePauseButton();
+    updateStatus(isPaused ? 'Recording paused' : 'Recording resumed');
+  } catch (error) {
+    console.error('Failed to toggle pause:', error);
+  }
+}
+
+// Settings management
+async function updateSettings() {
+  const settings = {
+    quality: qualitySelector.value,
+    audioEnabled: audioToggle.checked
+  };
+  
+  await chrome.storage.local.set({ settings });
+}
+
+// UI updates
+function updateButtonStates(recording, stopped = false) {
+  startButton.disabled = recording;
+  stopButton.disabled = !recording;
+  pauseButton.disabled = !recording || stopped;
+  qualitySelector.disabled = recording;
+  audioToggle.disabled = recording;
+  
+  if (stopped) {
+    pauseButton.textContent = '⏸ Pause';
+    isPaused = false;
+  }
+}
+
+function updatePauseButton() {
+  pauseButton.textContent = isPaused ? '▶ Resume' : '⏸ Pause';
+}
+
+function updateStatus(message) {
+  statusElement.textContent = message;
+}
+
+function formatTime(ms) {
+  const seconds = Math.floor(ms / 1000);
+  const hh = Math.floor(seconds / 3600);
+  const mm = Math.floor((seconds % 3600) / 60);
+  const ss = seconds % 60;
+  
+  return [hh, mm, ss]
+    .map(num => num.toString().padStart(2, '0'))
+    .join(':');
+}
+
+function updateTimer(duration) {
+  timerElement.textContent = formatTime(duration);
+}
+
+function updateUI(status) {
+  isRecording = status.isRecording;
+  isPaused = status.isPaused;
+  
+  updateButtonStates(isRecording);
+  updatePauseButton();
+  updateTimer(status.duration);
+  
+  if (!isRecording) {
+    updateStatus('Ready to record');
+  }
+}
+
+// Status polling
+async function updateRecordingStatus() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'GET_STATUS' });
+    updateUI(response);
+  } catch (error) {
+    console.error('Failed to get recording status:', error);
+  }
+}
+
+// Error handling
+window.onerror = function(message, source, line, column, error) {
+  console.error('Error:', { message, source, line, column, error });
+  updateStatus('An error occurred');
+  return false;
+};

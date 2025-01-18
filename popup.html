@@ -1,18 +1,56 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Screen and Audio Recorder</title>
-    <link rel="stylesheet" type="text/css" href="styles.css" />
-    <script src="popup.js"></script>
+    <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <h1>Screen and Audio Recorder</h1>
-    <button id="startButton">Start Recording</button>
-    <button id="stopButton" disabled>Stop Recording</button>
-    <p id="timer">00:00:00</p>
-    <select id="qualitySelector">
-      <option value="1080p">1080p</option>
-      <option value="4k">4K</option>
-    </select>
+    <main class="recorder-app">
+      <header class="recorder-header">
+        <h1>Screen and Audio Recorder</h1>
+      </header>
+      
+      <div class="recorder-controls" role="group" aria-label="Recording Controls">
+        <div class="quality-selector">
+          <label for="qualitySelector">Recording Quality:</label>
+          <select id="qualitySelector" class="select-input">
+            <option value="1080p">1080p (Full HD)</option>
+            <option value="4k">4K (Ultra HD)</option>
+            <option value="720p">720p (HD)</option>
+          </select>
+        </div>
+
+        <div class="audio-controls">
+          <label for="audioToggle">Include Audio:</label>
+          <input type="checkbox" id="audioToggle" checked aria-label="Toggle audio recording">
+        </div>
+
+        <div class="button-group">
+          <button id="startButton" class="btn btn-primary" aria-label="Start Recording">
+            <span class="icon">▶</span> Start Recording
+          </button>
+          <button id="stopButton" class="btn btn-danger" disabled aria-label="Stop Recording">
+            <span class="icon">⬛</span> Stop
+          </button>
+          <button id="pauseButton" class="btn btn-secondary" disabled aria-label="Pause Recording">
+            <span class="icon">⏸</span> Pause
+          </button>
+        </div>
+
+        <div class="recording-status" aria-live="polite">
+          <div class="timer" id="timer" aria-label="Recording duration">00:00:00</div>
+          <div id="status" class="status-text">Ready to record</div>
+        </div>
+      </div>
+
+      <footer class="recorder-footer">
+        <div class="shortcuts" role="note">
+          <p>Shortcuts: Start/Stop (Ctrl+Shift+R) | Pause (Ctrl+Shift+P)</p>
+        </div>
+      </footer>
+    </main>
+    <script src="popup.js" defer></script>
   </body>
 </html>
